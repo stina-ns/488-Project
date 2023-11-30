@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "typescript": "^5.3.2",
+    "vite": "^5.0.4",
+    "vite-plugin-checker": "^0.6.2"
+  }
+}

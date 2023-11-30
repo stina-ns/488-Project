@@ -1,0 +1,18 @@
+{
+  "name": "gltf-reader",
+  "type": "module",
+  "scripts": {
+    "start": "vite --open",
+    "build": "tsc && vite build",
+    "deploy": "tsc && vite build && ssh twodee \"rm -rf $npm_package_config_wwwbase/$npm_package_name\" && scp -r dist twodee:$npm_package_config_wwwbase/$npm_package_name && ssh twodee \"chmod -R g+rX $npm_package_config_wwwbase/$npm_package_name\""
+  },
+  "config": {
+    "wwwbase": "/var/www/how-to-3d/renderers"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "typescript": "^5.3.2",
+    "vite": "^4.5.0",
+    "vite-plugin-checker": "^0.6.2"
+  }
+}
