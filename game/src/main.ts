@@ -136,7 +136,7 @@ function render() {
   shader.setUniform3f('specularColor', 1, 1, 1);
   shader.setUniform1f('shininess', 25);
   shader.setUniform1i('skin', 0);
-  shader.setUniform1i('terrain', 0);
+  shader.setUniform1i('terrain', 1);
   vao.bind();
   vao.drawIndexed(gl.TRIANGLES);
   vao.unbind();
@@ -235,14 +235,13 @@ void main() {
   vec3 specular = specularity * specularColor;
 
   vec3 rgb = ambient + diffuse + specular;
-  fragmentColor = vec4(rgb, 1.0) * texture(skin, mixTexPosition) 
-    * texture(terrain, mixTexPosition);
+  fragmentColor = vec4(rgb, 1.0) * texture(skin, mixTexPosition);
   //fragmentColor = vec4(vec3(mixTexPosition, 1.0) * rgb, 1.0);
 }
   `;
 
   shader = new ShaderProgram(vertexSource, fragmentSource);
-  const terrain = await initializeTerrain();
+  terrain = await initializeTerrain();
 
   await initializeChassisModel();
   await initializeWheelModel();
@@ -338,7 +337,7 @@ async function readImage(url: string) {
 async function initializeTerrain() {
   // Add Textures
   let ocean = await readImage('grandline.png');
-  createTexture2d(ocean, gl.TEXTURE0);
+  createTexture2d(ocean, gl.TEXTURE1);
   gl.activeTexture(gl.TEXTURE0);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ocean);
 
@@ -349,6 +348,8 @@ async function initializeTerrain() {
   const attributes = new VertexAttributes();
   attributes.addAttribute('position', terrain.width * terrain.depth, 3, mesh.positions);
   attributes.addAttribute('normal', terrain.width * terrain.depth, 3, mesh.normals);
+  attributes.addIndices(mesh.indices!);
+  console.log(terrain);
   console.log(mesh);
   attributes.addIndices(mesh.indices);
   vao = new VertexArray(shader, attributes);
@@ -368,6 +369,7 @@ async function initializeChassisModel() {
   // console.log(smallBoatModel);
   const texture = await readImage('player_1_texture.png');
   createTexture2d(texture, gl.TEXTURE0);
+  gl.activeTexture(gl.TEXTURE0);
 }
 
 function modelToVertexArray(model: gltf.Model) {
@@ -380,11 +382,10 @@ function modelToVertexArray(model: gltf.Model) {
   return new VertexArray(shader, attributes);
 }
 
-function createTexture2d(image: any, textureUnit = gl.TEXTURE0) {
+function createTexture2d(image: any, textureUnit: any= gl.TEXTURE0) {
   gl.activeTexture(textureUnit);
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.activeTexture(gl.TEXTURE0);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   gl.generateMipmap(gl.TEXTURE_2D);
   return texture;
