@@ -27,6 +27,7 @@ let terrain: Terrain;
 let meshVao: VertexArray;
 let chassisVao: VertexArray;
 let wheelVao: VertexArray;
+let smallBoatModel: gltf.Model;
 
 // Cannon
 let physics: Cannon.World;
@@ -131,10 +132,11 @@ function render() {
   shader.setUniformMatrix4fv('eyeFromModel', eyeFromModel.toFloats());
   shader.setUniform3f('albedo', 1, 1, 1);
   shader.setUniform3f('diffuseColor', 1, 1, 1);
-  shader.setUniform1f('ambientFactor', 0.1);
+  shader.setUniform1f('ambientFactor', 1);
   shader.setUniform3f('specularColor', 1, 1, 1);
   shader.setUniform1f('shininess', 25);
   shader.setUniform1i('skin', 0);
+  shader.setUniform1i('terrain', 0);
   vao.bind();
   vao.drawIndexed(gl.TRIANGLES);
   vao.unbind();
@@ -204,6 +206,7 @@ void main() {
 
   const fragmentSource = `
 uniform sampler2D skin;
+uniform sampler2D terrain;
 uniform vec3 albedo;
 uniform vec3 lightPosition;
 uniform vec3 diffuseColor;
@@ -232,8 +235,9 @@ void main() {
   vec3 specular = specularity * specularColor;
 
   vec3 rgb = ambient + diffuse + specular;
-  fragmentColor = texture(skin, mixTexPosition);
-  fragmentColor = vec4(rgb, 1.0);
+  fragmentColor = vec4(rgb, 1.0) * texture(skin, mixTexPosition) 
+    * texture(terrain, mixTexPosition);
+  //fragmentColor = vec4(vec3(mixTexPosition, 1.0) * rgb, 1.0);
 }
   `;
 
@@ -332,16 +336,22 @@ async function readImage(url: string) {
 }
 
 async function initializeTerrain() {
+  // Add Textures
+  let ocean = await readImage('grandline.png');
+  createTexture2d(ocean, gl.TEXTURE0);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ocean);
+
+  // Generate Heightmap
   const image = await readImage('canopy.png');
   terrain = await Terrain.imageToTerrain(image);
-
   const mesh = terrain.toTrimesh();
   const attributes = new VertexAttributes();
   attributes.addAttribute('position', terrain.width * terrain.depth, 3, mesh.positions);
   attributes.addAttribute('normal', terrain.width * terrain.depth, 3, mesh.normals);
+  console.log(mesh);
   attributes.addIndices(mesh.indices);
   vao = new VertexArray(shader, attributes);
-
   return terrain;
 }
 
@@ -351,8 +361,11 @@ async function initializeWheelModel() {
 }
 
 async function initializeChassisModel() {
-  const model = await gltf.readModel('bg_small_boat_player_1_blue.gltf');
-  chassisVao = modelToVertexArray(model);
+  smallBoatModel = await gltf.readModel('bg_small_boat_player_1_blue.gltf'); // texCoords in model for textures
+  //let attributes = new VertexAttributes();
+  //attributes.addAttribute('position', smallBoatModel.meshes[0].positions.count, 3, smallBoatModel)
+  chassisVao = modelToVertexArray(smallBoatModel);
+  // console.log(smallBoatModel);
   const texture = await readImage('player_1_texture.png');
   createTexture2d(texture, gl.TEXTURE0);
 }
@@ -362,6 +375,7 @@ function modelToVertexArray(model: gltf.Model) {
   const attributes = new VertexAttributes();
   attributes.addAttribute('position', mesh.positions.count, mesh.positions.size, mesh.positions.buffer);
   attributes.addAttribute('normal', mesh.normals!.count, mesh.normals!.size, mesh.normals!.buffer);
+  attributes.addAttribute('texPosition', mesh.texCoord!.count, mesh.texCoord!.size, mesh.texCoord!.buffer);
   attributes.addIndices(mesh.indices!.buffer);
   return new VertexArray(shader, attributes);
 }
