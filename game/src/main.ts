@@ -133,30 +133,18 @@ function render() {
   shader.setUniformMatrix4fv('worldFromModel', Matrix4.identity().toFloats());
   shader.setUniformMatrix4fv('eyeFromModel', eyeFromModel.toFloats());
   shader.setUniform3f('albedo', 1, 1, 1);
-  shader.setUniform3f('diffuseColor', 1, 1, 1);
-  shader.setUniform1f('ambientFactor', 1);
-  shader.setUniform3f('specularColor', 1, 1, 1);
-  shader.setUniform1f('shininess', 25);
-  shader.setUniform1i('skin', 0);
+  // shader.setUniform3f('diffuseColor', 1, 1, 1);
+  // shader.setUniform1f('ambientFactor', 1);
+  // shader.setUniform3f('specularColor', 1, 1, 1);
+  // shader.setUniform1f('shininess', 25);
+  shader.setUniform1i('skin', 1);
   // shader.setUniform1i('terrain', 1);
   vao.bind();
   vao.drawIndexed(gl.TRIANGLES);
   vao.unbind();
 
-  shader.bind();
-  shader.setUniformMatrix4fv('clipFromEye', clipFromEye.toFloats());
-  shader.setUniformMatrix4fv('eyeFromWorld', camera.eyeFromWorld.toFloats());
-  shader.setUniformMatrix4fv('worldFromModel', Matrix4.identity().toFloats());
-  shader.setUniformMatrix4fv('eyeFromModel', eyeFromModel.toFloats());
   shader.setUniform3f('albedo', 1, 1, 1);
-  shader.setUniform3f('diffuseColor', 1, 1, 1);
-  shader.setUniform1f('ambientFactor', 1);
-  shader.setUniform3f('specularColor', 1, 1, 1);
-  shader.setUniform1f('shininess', 25);
   shader.setUniform1i('skin', 0);
-  vao.bind();
-  vao.drawIndexed(gl.TRIANGLES);
-  vao.unbind();
 
 
   //shader.setUniform3f('albedo', 1, 0, 0);
@@ -227,10 +215,10 @@ uniform sampler2D skin;
 // uniform sampler2D terrain;
 uniform vec3 albedo;
 uniform vec3 lightPosition;
-uniform vec3 diffuseColor;
-uniform vec3 specularColor;
-uniform float ambientFactor;
-uniform float shininess;
+// uniform vec3 diffuseColor;
+// uniform vec3 specularColor;
+// uniform float ambientFactor;
+// uniform float shininess;
 
 // const vec3 lightDirection = normalize(vec3(1.0, 1.0, 1.0));
 
@@ -242,19 +230,24 @@ out vec4 fragmentColor;
 
 void main() {
   vec3 normal = normalize(mixNormal);
+  
   // Compute diffuse term
   vec3 lightDirection = normalize(lightPosition - mixPositionEye);
-  float litness = max(0.0, dot(normal, lightDirection));
-  vec3 ambient = ambientFactor * albedo * diffuseColor;
-  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor;
+  // float litness = max(0.0, dot(normal, lightDirection));
+  // vec3 ambient = ambientFactor * albedo * diffuseColor;
+  // vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor;
 
-  // Compute specular term
-  vec3 eyeDirection = normalize(-mixPositionEye);
-  vec3 halfDirection = normalize(eyeDirection + lightDirection);
-  float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
-  vec3 specular = specularity * specularColor;
+  // // Compute specular term
+  // vec3 eyeDirection = normalize(-mixPositionEye);
+  // vec3 halfDirection = normalize(eyeDirection + lightDirection);
+  // float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
+  // vec3 specular = specularity * specularColor;
 
-  vec3 rgb = ambient + diffuse + specular;
+  // vec3 rgb = ambient + diffuse + specular;
+
+
+  float litness = max(dot(lightDirection, normal), 0.0);
+  vec3 rgb = albedo * litness;
   fragmentColor = vec4(rgb, 1.0) * texture(skin, mixTexPosition);
   //fragmentColor = vec4(vec3(mixTexPosition, 1.0) * rgb, 1.0);
 }
@@ -362,17 +355,16 @@ async function initializeTerrain() {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ocean);
 
   // Generate Heightmap
-  const image = await readImage('terrain1.png');
+  const image = await readImage('track.png');
   terrain = await Terrain.imageToTerrain(image);
+
   const mesh = terrain.toTrimesh();
   const attributes = new VertexAttributes();
   attributes.addAttribute('position', terrain.width * terrain.depth, 3, mesh.positions);
   attributes.addAttribute('normal', terrain.width * terrain.depth, 3, mesh.normals);
-  // attributes.addAttribute('texPosition', texCoords.length, 2, texCoords);
   attributes.addIndices(mesh.indices);
-  console.log(terrain);
-  console.log(mesh);
   vao = new VertexArray(shader, attributes);
+
   return terrain;
 }
 
@@ -383,10 +375,7 @@ async function initializeWheelModel() {
 
 async function initializeChassisModel() {
   smallBoatModel = await gltf.readModel('bg_small_boat_player_1_blue.gltf'); // texCoords in model for textures
-  //let attributes = new VertexAttributes();
-  //attributes.addAttribute('position', smallBoatModel.meshes[0].positions.count, 3, smallBoatModel)
   chassisVao = modelToVertexArray(smallBoatModel);
-  // console.log(smallBoatModel);
   const texture = await readImage('player_1_texture.png');
   createTexture2d(texture, gl.TEXTURE0);
   gl.activeTexture(gl.TEXTURE0);
