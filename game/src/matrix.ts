@@ -318,4 +318,11 @@ export class Matrix4 {
     
         return m;
       }
+      
+      static combineMatrices(matrices: Array<Matrix4>): Matrix4 {
+        for (let i = 1; i < matrices.length; i++) {
+          matrices[0] = matrices[0].multiplyMatrix(matrices[i]);
+        }
+        return matrices[0];
+      }
 }

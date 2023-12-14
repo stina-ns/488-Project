@@ -11,7 +11,9 @@ import * as Cannon from 'cannon-es';
 import * as gltf from './gltf';
 
 let canvas: HTMLCanvasElement;
-let camera: FirstPersonCamera;
+// let camera: FirstPersonCamera;
+// let camera2: FirstPersonCamera;
+let cameras: FirstPersonCamera[];
 let clipFromEye: Matrix4;
 let shader: ShaderProgram;
 let vao: VertexArray;
@@ -19,23 +21,28 @@ let attributes: VertexAttributes;
 let backgroundColor = new Vector3(0.5, 0.5, 0.8);
 let horizontal = 0;
 let vertical = 0;
-let turn = 0;
-let move = 0;
-let brake = 0;
+let p1_turn = 0;
+let p1_move = 0;
+let p1_brake = 0;
+let p2_turn = 0;
+let p2_move = 0;
+let p2_brake = 0;
 let lastMillis = 0;
 let terrain: Terrain;
-let terrainVao: VertexArray;
-let terrainShader: ShaderProgram;
-let meshVao: VertexArray;
 let chassisVao: VertexArray;
+let chassisVao2: VertexArray;
 let wheelVao: VertexArray;
+let wheelVao2: VertexArray;
 let smallBoatModel: gltf.Model;
+let smallBoatModel2: gltf.Model;
 
 // Cannon
 let physics: Cannon.World;
 let terrainBody: Cannon.Body;
-let vehicle: Cannon.RaycastVehicle;
-let chassisBody: Cannon.Body;
+let vehicle1: Cannon.RaycastVehicle;
+let vehicle2: Cannon.RaycastVehicle;
+let chassisBody1: Cannon.Body;
+let chassisBody2: Cannon.Body;
 
 // Physics Creation
 function initializePhysics() {
@@ -60,24 +67,45 @@ function initializePhysics() {
   // Add Physics Simulation to Terrain Body
   physics.addBody(terrainBody);
   
-  // Car Chassis Body
-  let chassisDimensions = new Vector3(3.5, 1, 6);
-  const chassisShape = new Cannon.Box(new Cannon.Vec3(
-    chassisDimensions.x * 0.5,
-    chassisDimensions.y * 0.5,
-    chassisDimensions.z * 0.5,
+  // Car 1 Chassis Body
+  let chassisDimensions1 = new Vector3(3.5, 1, 6);
+  const chassisShape1 = new Cannon.Box(new Cannon.Vec3(
+    chassisDimensions1.x * 0.5,
+    chassisDimensions1.y * 0.5,
+    chassisDimensions1.z * 0.5,
   ));
-  chassisBody = new Cannon.Body({
+  chassisBody1 = new Cannon.Body({
     mass: 250,
     angularDamping: 0.8,
     linearDamping: 0.1,
     position: new Cannon.Vec3(15, 10, -20),
   });
-  chassisBody.addShape(chassisShape);
+  chassisBody1.addShape(chassisShape1);
+
+  // car 2 chassis body
+  let chassisDimensions2 = new Vector3(3.5, 1, 6);
+  const chassisShape2 = new Cannon.Box(new Cannon.Vec3(
+    chassisDimensions2.x * 0.5,
+    chassisDimensions2.y * 0.5,
+    chassisDimensions2.z * 0.5,
+  ));
+  chassisBody2 = new Cannon.Body({
+    mass: 250,
+    angularDamping: 0.8,
+    linearDamping: 0.1,
+    position: new Cannon.Vec3(15, 10, -20),
+  });
+  chassisBody2.addShape(chassisShape2);
 
   // Add Physics Simulation to Chassis Body
-  vehicle = new Cannon.RaycastVehicle({
-    chassisBody,
+  vehicle1 = new Cannon.RaycastVehicle({
+    chassisBody: chassisBody1,
+    indexRightAxis: 0,
+    indexUpAxis: 1,
+    indexForwardAxis: 2,
+  });
+  vehicle2 = new Cannon.RaycastVehicle({
+    chassisBody: chassisBody2,
     indexRightAxis: 0,
     indexUpAxis: 1,
     indexForwardAxis: 2,
@@ -99,25 +127,63 @@ function initializePhysics() {
     customSlidingRotationalSpeed: -10,
     useCustomSlidingRotationalSpeed: true,
   };
+
+  const wheelOptions2 = {
+    radius: 1,
+    directionLocal: new Cannon.Vec3(0, -1, 0),
+    suspensionStiffness: 30,
+    suspensionRestLength: 0.3,
+    frictionSlip: 1.4,
+    dampingRelaxation: 2.3,
+    dampingCompression: 4.4,
+    maxSuspensionForce: 100000,
+    rollInfluence: 0.00001,
+    axleLocal: new Cannon.Vec3(1, 0, 0),
+    chassisConnectionPointLocal: new Cannon.Vec3(),
+    maxSuspensionTravel: 0.1,
+    customSlidingRotationalSpeed: -10,
+    useCustomSlidingRotationalSpeed: true,
+  };
   
   // Front left is wheel 0
   wheelOptions.chassisConnectionPointLocal.set(-2.5, 0, -2);
-  vehicle.addWheel(wheelOptions);
+  vehicle1.addWheel(wheelOptions);
   
   // Front right is wheel 1
   wheelOptions.chassisConnectionPointLocal.set(2.5, 0, -2);
-  vehicle.addWheel(wheelOptions);
+  vehicle1.addWheel(wheelOptions);
   
   // Back left is wheel 2
   wheelOptions.chassisConnectionPointLocal.set(-2.5, 0, 2);
-  vehicle.addWheel(wheelOptions);
+  vehicle1.addWheel(wheelOptions);
   
   // Back right is wheel 3
   wheelOptions.chassisConnectionPointLocal.set(2.5, 0, 2);
-  vehicle.addWheel(wheelOptions);
+  vehicle1.addWheel(wheelOptions);
   
   
-  vehicle.addToWorld(physics);
+  vehicle1.addToWorld(physics);
+
+  // vehicle 2
+
+   // Front left is wheel 0
+  wheelOptions2.chassisConnectionPointLocal.set(-2.5, 0, -2);
+  vehicle2.addWheel(wheelOptions2);
+  
+  // Front right is wheel 1
+  wheelOptions2.chassisConnectionPointLocal.set(2.5, 0, -2);
+  vehicle2.addWheel(wheelOptions2);
+  
+  // Back left is wheel 2
+  wheelOptions2.chassisConnectionPointLocal.set(-2.5, 0, 2);
+  vehicle2.addWheel(wheelOptions2);
+  
+  // Back right is wheel 3
+  wheelOptions2.chassisConnectionPointLocal.set(2.5, 0, 2);
+  vehicle2.addWheel(wheelOptions2);
+  
+  
+  vehicle2.addToWorld(physics);
 }
 
 function render() {
@@ -125,53 +191,81 @@ function render() {
   gl.clearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  let eyeFromModel = Matrix4.translate(0, 0, -10);
+  for (let i = 0; i < 2; i++) {
+    gl.viewport((canvas.width * i) / 2, 0, canvas.width / 2, canvas.height);
+    const aspectRatio = (canvas.width / 2) / canvas.height;
+    clipFromEye = Matrix4.perspective(45, aspectRatio, 0.1, 1500);
+    let eyeFromModel = Matrix4.translate(0, 0, -10);
 
-  shader.bind();
-  shader.setUniformMatrix4fv('clipFromEye', clipFromEye.toFloats());
-  shader.setUniformMatrix4fv('eyeFromWorld', camera.eyeFromWorld.toFloats());
-  shader.setUniformMatrix4fv('worldFromModel', Matrix4.identity().toFloats());
-  shader.setUniformMatrix4fv('eyeFromModel', eyeFromModel.toFloats());
-  shader.setUniform3f('albedo', 1, 1, 1);
-  // shader.setUniform3f('diffuseColor', 1, 1, 1);
-  // shader.setUniform1f('ambientFactor', 1);
-  // shader.setUniform3f('specularColor', 1, 1, 1);
-  // shader.setUniform1f('shininess', 25);
-  shader.setUniform1i('skin', 1);
-  // shader.setUniform1i('terrain', 1);
-  vao.bind();
-  vao.drawIndexed(gl.TRIANGLES);
-  vao.unbind();
+    shader.bind();
+    shader.setUniformMatrix4fv('clipFromEye', clipFromEye.toFloats());
+    shader.setUniformMatrix4fv('eyeFromWorld', cameras[i].eyeFromWorld.toFloats());
+    shader.setUniformMatrix4fv('worldFromModel', Matrix4.identity().toFloats());
+    shader.setUniformMatrix4fv('eyeFromModel', eyeFromModel.toFloats());
+    shader.setUniform3f('albedo', 1, 1, 1);
+    // shader.setUniform3f('diffuseColor', 1, 1, 1);
+    // shader.setUniform1f('ambientFactor', 1);
+    // shader.setUniform3f('specularColor', 1, 1, 1);
+    // shader.setUniform1f('shininess', 25);
+    shader.setUniform1i('skin', 1);
+    // shader.setUniform1i('terrain', 1);
+    vao.bind();
+    vao.drawIndexed(gl.TRIANGLES);
+    vao.unbind();
 
-  shader.setUniform3f('albedo', 1, 1, 1);
-  shader.setUniform1i('skin', 0);
+      shader.setUniform1i('skin', 0);
 
 
-  //shader.setUniform3f('albedo', 1, 0, 0);
+      //shader.setUniform3f('albedo', 1, 0, 0);
 
-  
-  for (let i = 0; i < 4; ++i) {
-    const {position, quaternion} = vehicle.wheelInfos[i].worldTransform;
-    const translater = Matrix4.translate(position.x, position.y, position.z);
-    const rotater = Matrix4.fromQuaternion(new Quaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-    const transform = translater.multiplyMatrix(rotater);
-    shader.setUniformMatrix4fv('worldFromModel', transform.toFloats());
-    wheelVao.bind();
-    //wheelVao.drawIndexed(gl.TRIANGLES);
-    wheelVao.unbind();
+
+      for (let i = 0; i < 4; ++i) {
+        const {position, quaternion} = vehicle1.wheelInfos[i].worldTransform;
+        const translater = Matrix4.translate(position.x, position.y, position.z);
+        const rotater = Matrix4.fromQuaternion(new Quaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+        const transform = translater.multiplyMatrix(rotater);
+        shader.setUniformMatrix4fv('worldFromModel', transform.toFloats());
+        wheelVao.bind();
+        wheelVao.drawIndexed(gl.TRIANGLES);
+        wheelVao.unbind();
+      }
+
+      {
+        const translater = Matrix4.translate(chassisBody1.position.x, chassisBody1.position.y, chassisBody1.position.z);
+        const rotater = Matrix4.fromQuaternion(new Quaternion(chassisBody1.quaternion.x, chassisBody1.quaternion.y, chassisBody1.quaternion.z, chassisBody1.quaternion.w));
+        const transform = translater.multiplyMatrix(rotater);
+        shader.setUniformMatrix4fv('worldFromModel', transform.toFloats());
+        chassisVao.bind();
+        chassisVao.drawIndexed(gl.TRIANGLES);
+        chassisVao.unbind();
+      }
+
+      shader.setUniform1i('skin', 2);
+
+      for (let i = 0; i < 4; ++i) {
+        const {position, quaternion} = vehicle2.wheelInfos[i].worldTransform;
+        const translater = Matrix4.translate(position.x, position.y, position.z);
+        const rotater = Matrix4.fromQuaternion(new Quaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+        const transform = translater.multiplyMatrix(rotater);
+        shader.setUniformMatrix4fv('worldFromModel', transform.toFloats());
+        wheelVao2.bind();
+        wheelVao.drawIndexed(gl.TRIANGLES);
+        wheelVao2.unbind();
+      }
+
+      {
+        const translater = Matrix4.translate(chassisBody2.position.x, chassisBody2.position.y, chassisBody2.position.z);
+        const rotater = Matrix4.fromQuaternion(new Quaternion(chassisBody2.quaternion.x, chassisBody2.quaternion.y, chassisBody2.quaternion.z, chassisBody2.quaternion.w));
+        const transform = translater.multiplyMatrix(rotater);
+        shader.setUniformMatrix4fv('worldFromModel', transform.toFloats());
+        chassisVao2.bind();
+        chassisVao2.drawIndexed(gl.TRIANGLES);
+        chassisVao2.unbind();
+      }
+
+      shader.unbind();
+
   }
-
-  {
-    const translater = Matrix4.translate(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
-    const rotater = Matrix4.fromQuaternion(new Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w));
-    const transform = translater.multiplyMatrix(rotater);
-    shader.setUniformMatrix4fv('worldFromModel', transform.toFloats());
-    chassisVao.bind();
-    chassisVao.drawIndexed(gl.TRIANGLES);
-    chassisVao.unbind();
-  }
-
-  shader.unbind();
 }
 
 function onResizeWindow() {
@@ -257,10 +351,15 @@ void main() {
   terrain = await initializeTerrain();
 
   await initializeChassisModel();
+  await initializeChassis2Model();
   await initializeWheelModel();
+  await initializeWheel2Model();
+  await initializeChassis2Model();
   await initializePhysics();
 
-  camera = new FirstPersonCamera(new Vector3(15, 12, -5), new Vector3(15, 10, -20), new Vector3(0, 1, 0));
+  cameras = [
+  new FirstPersonCamera(new Vector3(15, 12, -5), new Vector3(15, 10, -20), new Vector3(0, 1, 0)),
+  new FirstPersonCamera(new Vector3(15, 12, -5), new Vector3(15, 10, -20), new Vector3(0, 1, 0))];
 
   // Event listeners
   window.addEventListener('resize', () => {
@@ -280,29 +379,49 @@ void main() {
 
   window.addEventListener('keydown', event => {
     if (event.key === 'ArrowRight') {
-      turn = -1;
+      p2_turn = -1;
     } else if (event.key === 'ArrowLeft') {
-      turn = 1;
+      p2_turn = 1;
     } else if (event.key === 'ArrowUp') {
-      move = 1;
+      p2_move = 1;
     } else if (event.key === 'ArrowDown') {
-      move = -1;
+      p2_move = -1;
+		} else if (event.key === '0') {
+      p2_brake = 1;
+    } else if (event.key === 'd') {
+      p1_turn = -1;
+    } else if (event.key === 'a') {
+      p1_turn = 1;
+    } else if (event.key === 'w') {
+      p1_move = 1;
+    } else if (event.key === 's') {
+      p1_move = -1;
 		} else if (event.key === ' ') {
-      brake = 1;
+      p1_brake = 1;
     }
   });
 
   window.addEventListener('keyup', event => {
 		if (event.key === 'ArrowUp') {
-      move = 0;
+      p2_move = 0;
     } else if (event.key === 'ArrowDown') {
-      move = 0;
+      p2_move = 0;
     } else if (event.key === 'ArrowLeft') {
-      turn = 0;
+      p2_turn = 0;
     } else if (event.key === 'ArrowRight') {
-      turn = 0;
+      p2_turn = 0;
+    } else if (event.key === '0') {
+      p2_brake = 0;
+		} else if (event.key === 'w') {
+      p1_move = 0;
+    } else if (event.key === 's') {
+      p1_move = 0;
+    } else if (event.key === 'a') {
+      p1_turn = 0;
+    } else if (event.key === 'd') {
+      p1_turn = 0;
     } else if (event.key === ' ') {
-      brake = 0;
+      p1_brake = 0;
 		}
   });
 
@@ -318,23 +437,42 @@ function animate() {
   
   // Third Person Camera Setup
   let back = new Cannon.Vec3(0, 0, 20);
-  back = chassisBody.quaternion.vmult(back);
+  back = chassisBody1.quaternion.vmult(back);
   back.y = 6;
-  const from = chassisBody.position.vadd(back);
-  camera = new FirstPersonCamera(
+  const from = chassisBody1.position.vadd(back);
+  cameras[0] = new FirstPersonCamera(
     new Vector3(from.x, from.y, from.z),
-    new Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z),
+    new Vector3(chassisBody1.position.x, chassisBody1.position.y, chassisBody1.position.z),
+    new Vector3(0, 1, 0)
+  );
+
+  let back2 = new Cannon.Vec3(0, 0, 20);
+  back2 = chassisBody2.quaternion.vmult(back2);
+  back2.y = 6;
+  const from2 = chassisBody2.position.vadd(back2);
+  cameras[1] = new FirstPersonCamera(
+    new Vector3(from2.x, from2.y, from2.z),
+    new Vector3(chassisBody2.position.x, chassisBody2.position.y, chassisBody2.position.z),
     new Vector3(0, 1, 0)
   );
   
-  vehicle.applyEngineForce(1000 * move, 2);
-  vehicle.applyEngineForce(1000 * move, 3);
-  vehicle.setSteeringValue(0.5 * turn, 0);
-  vehicle.setSteeringValue(0.5 * turn, 1);
-  vehicle.setBrake(100000 * brake, 0);
-  vehicle.setBrake(100000 * brake, 1);
-  vehicle.setBrake(100000 * brake, 2);
-  vehicle.setBrake(100000 * brake, 3);
+  vehicle1.applyEngineForce(1000 * p1_move, 2);
+  vehicle1.applyEngineForce(1000 * p1_move, 3);
+  vehicle1.setSteeringValue(0.5 * p1_turn, 0);
+  vehicle1.setSteeringValue(0.5 * p1_turn, 1);
+  vehicle1.setBrake(100000 * p1_brake, 0);
+  vehicle1.setBrake(100000 * p1_brake, 1);
+  vehicle1.setBrake(100000 * p1_brake, 2);
+  vehicle1.setBrake(100000 * p1_brake, 3);
+
+  vehicle2.applyEngineForce(1000 * p2_move, 2);
+  vehicle2.applyEngineForce(1000 * p2_move, 3);
+  vehicle2.setSteeringValue(0.5 * p2_turn, 0);
+  vehicle2.setSteeringValue(0.5 * p2_turn, 1);
+  vehicle2.setBrake(100000 * p2_brake, 0);
+  vehicle2.setBrake(100000 * p2_brake, 1);
+  vehicle2.setBrake(100000 * p2_brake, 2);
+  vehicle2.setBrake(100000 * p2_brake, 3);
   render();
   lastMillis = currentMillis;
   requestAnimationFrame(animate);
@@ -381,6 +519,19 @@ async function initializeChassisModel() {
   gl.activeTexture(gl.TEXTURE0);
 }
 
+async function initializeWheel2Model() {
+  const model = await gltf.readModel('wheel.gltf');
+  wheelVao2 = modelToVertexArray(model);
+}
+
+async function initializeChassis2Model() {
+  smallBoatModel2 = await gltf.readModel('bg_small_boat_player_1_blue.gltf'); // texCoords in model for textures
+  chassisVao2 = modelToVertexArray(smallBoatModel);
+  const texture = await readImage('player_2_texture.png');
+  createTexture2d(texture, gl.TEXTURE2);
+  gl.activeTexture(gl.TEXTURE2);
+}
+
 function modelToVertexArray(model: gltf.Model) {
   const mesh = model.meshes[0];
   const attributes = new VertexAttributes();
@@ -399,6 +550,13 @@ function createTexture2d(image: any, textureUnit: any= gl.TEXTURE0) {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   gl.generateMipmap(gl.TEXTURE_2D);
   return texture;
+}
+
+function pointToAngle(x: number, y: number): number {
+    const angleInRadians = Math.atan2(y, x);
+    let angleInDegrees = angleInRadians * (180 / Math.PI);
+    angleInDegrees = angleInDegrees >= 0 ? angleInDegrees : 360 + angleInDegrees;
+    return angleInDegrees
 }
 
 window.addEventListener('load', () => initialize());
